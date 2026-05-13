@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers.upload import router as upload_router
 from backend.routers.chat import router as chat_router
+from backend.routers.sessions import router as sessions_router
 
 app = FastAPI(title="ResearchFlow API")
 
@@ -15,6 +16,7 @@ app.add_middleware(
 
 app.include_router(upload_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
 
 @app.get("/")
 def health():

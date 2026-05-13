@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from backend.services.parser import extract_chunks
 from backend.services.vectorstore import store_chunks
+from backend.services.sessions import create_session
 
 router = APIRouter()
 
@@ -21,7 +22,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         f.write(await file.read())
 
     chunks = extract_chunks(file_path)
-    store_chunks(session_id, chunks)  # store in ChromaDB
+    store_chunks(session_id, chunks)
+    create_session(session_id, file.filename)  # persist session
 
     return {
         "session_id": session_id,
