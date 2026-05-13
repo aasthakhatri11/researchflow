@@ -453,3 +453,101 @@ The system should help users:
 * compare sources efficiently
 * generate usable research notes
 
+---
+
+---
+
+# Development Roadmap
+
+## Week 1 — Backend Foundation
+
+* FastAPI project setup
+* PDF upload and parsing with PyMuPDF
+* Semantic chunking pipeline
+* HuggingFace embeddings integration
+* ChromaDB setup
+* PostgreSQL session storage
+* AWS S3 integration
+
+## Week 2 — RAG + Web Search
+
+* LangChain retrieval pipeline
+* Gemini API integration
+* Confidence-based source routing
+* Tavily web search integration
+* Multi-paper retrieval support
+* Citation-aware response generation
+
+## Week 3 — Frontend + UX
+
+* React chat interface
+* Mode switching (Document / Hybrid / Explore)
+* Multi-file upload support
+* Conversation history sidebar
+* Metadata cards
+* Markdown/PDF export
+* Source citation display
+
+## Week 4 — Deployment + Polish
+
+* Deploy frontend on Vercel
+* Deploy backend on AWS EC2
+* Error handling and edge-case testing
+* End-to-end testing
+* Final documentation cleanup
+
+---
+
+# Core Logic
+
+## Confidence-Based Routing
+
+If document retrieval confidence is low, the system automatically performs web search augmentation.
+
+```python
+def should_search_web(score: float,
+                      threshold: float = 0.75) -> bool:
+    return score < threshold
+```
+
+---
+
+## Multi-Paper Retrieval
+
+Each uploaded paper maintains its own vector store to support cross-document querying and comparison.
+
+```python
+def query_all_papers(question: str,
+                     paper_ids: list[str]):
+
+    results = []
+
+    for pid in paper_ids:
+        store = load_vectorstore(pid)
+        chunks = store.similarity_search(question, k=3)
+
+        results.extend(chunks)
+
+    return results
+```
+
+---
+
+# Deployment
+
+## Frontend
+
+* Vercel
+
+## Backend
+
+* AWS EC2
+
+## Database
+
+* PostgreSQL
+
+## Vector Store
+
+* ChromaDB
+
