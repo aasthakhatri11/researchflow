@@ -260,3 +260,196 @@ The current implementation focus includes:
 * multi-document querying
 * transparent citation handling
 * persistent research workflows
+
+---
+
+---
+
+# Development Roadmap
+
+## Week 1 — Backend Foundation
+
+### Goals
+
+* Set up FastAPI backend architecture
+* Implement PDF upload and parsing
+* Build embedding + vector store pipeline
+
+### Tasks
+
+* FastAPI project setup
+* PDF upload endpoint
+* Text extraction using PyMuPDF
+* Semantic chunking strategy
+* HuggingFace embeddings integration
+* ChromaDB ingestion pipeline
+* PostgreSQL schema setup
+* Session CRUD endpoints
+* AWS S3 integration for document storage
+
+---
+
+## Week 2 — RAG + Multi-Paper Retrieval
+
+### Goals
+
+* Build hybrid retrieval pipeline
+* Add confidence-aware web augmentation
+* Support multi-document querying
+
+### Tasks
+
+* LangChain retrieval chain
+* Gemini API integration
+* Citation-aware prompting
+* Confidence scoring logic
+* Tavily API integration
+* Web augmentation pipeline
+* Multi-vectorstore management
+* Cross-document retrieval synthesis
+
+---
+
+## Week 3 — Frontend + User Experience
+
+### Goals
+
+* Build interactive research workflow UI
+* Improve usability and research productivity
+
+### Tasks
+
+* React chat interface
+* Mode switching (Document / Hybrid / Explore)
+* Multi-file upload support
+* Conversation history sidebar
+* Metadata extraction cards
+* Follow-up question suggestions
+* Markdown/PDF export system
+* Citation-aware source display
+
+---
+
+## Week 4 — Deployment + Polish
+
+### Goals
+
+* Production deployment
+* Error handling
+* Final optimization and testing
+
+### Tasks
+
+* Deploy backend on AWS EC2
+* Deploy frontend on Vercel
+* Add loading/error states
+* Improve edge-case handling
+* Create demo walkthrough
+* End-to-end testing
+* Final README polish
+
+---
+
+# Core Technical Components
+
+## Confidence-Based Source Routing
+
+ResearchFlow dynamically decides whether:
+
+* the uploaded document has sufficient context
+* or external web retrieval is required
+
+This prevents hallucinated answers when the document context is weak.
+
+### Example Logic
+
+```python
+def should_search_web(retrieval_score: float,
+                      threshold: float = 0.75) -> bool:
+    return retrieval_score < threshold
+```
+
+If the retrieval similarity score falls below the threshold:
+
+* web search augmentation is triggered automatically
+
+---
+
+## Multi-Paper Retrieval
+
+Each uploaded paper gets:
+
+* its own isolated vector store
+* independent embeddings
+* separate citation tracking
+
+This enables structured cross-paper comparison.
+
+### Example Retrieval Logic
+
+```python
+def query_all_papers(question: str,
+                     paper_ids: list[str]) -> list[dict]:
+
+    results = []
+
+    for pid in paper_ids:
+        store = load_vectorstore(pid)
+
+        chunks = store.similarity_search(question, k=3)
+
+        results.extend([
+            {
+                'paper': pid,
+                'content': c.page_content,
+                'page': c.metadata['page']
+            }
+            for c in chunks
+        ])
+
+    return results
+```
+
+---
+
+# Planned Enhancements
+
+Future improvements may include:
+
+* Streaming responses
+* Research graph visualization
+* Citation export formats (BibTeX/APA)
+* OCR support for scanned papers
+* Collaborative workspaces
+* Voice-based querying
+* Local LLM support
+* Research recommendation engine
+
+---
+
+# Design Philosophy
+
+ResearchFlow is designed around three principles:
+
+### 1. Transparency
+
+Every answer should clearly show:
+
+* where information came from
+* whether it originated from papers or the web
+
+### 2. Expandability
+
+Documents should act as:
+
+* the starting point of research
+* not the limit of available knowledge
+
+### 3. Research Productivity
+
+The system should help users:
+
+* explore ideas faster
+* compare sources efficiently
+* generate usable research notes
+
