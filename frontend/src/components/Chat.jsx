@@ -7,7 +7,6 @@ export default function Chat({ sessionId, filename, onReset }) {
 
   async function sendMessage() {
     if (!input.trim()) return
-
     const userMessage = { role: "user", content: input }
     setMessages(prev => [...prev, userMessage])
     setInput("")
@@ -20,15 +19,13 @@ export default function Chat({ sessionId, filename, onReset }) {
         body: JSON.stringify({ session_id: sessionId, query: input }),
       })
       const data = await res.json()
-
-      const assistantMessage = {
+      setMessages(prev => [...prev, {
         role: "assistant",
         content: data.answer || `[Source: ${data.source} | Confidence: ${data.confidence}]\n\nChunks found: ${data.chunks_found}`,
         source: data.source,
         confidence: data.confidence,
-      }
-      setMessages(prev => [...prev, assistantMessage])
-    } catch (err) {
+      }])
+    } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong." }])
     } finally {
       setLoading(false)
@@ -36,51 +33,81 @@ export default function Chat({ sessionId, filename, onReset }) {
   }
 
   return (
-    <div className="flex flex-col h-[80vh]">
+    <div style={{ display: "flex", flexDirection: "column", height: "80vh" }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <p className="text-sm text-gray-400">Chatting with</p>
-          <p className="font-medium">{filename}</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Chatting with</p>
+          <p style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>{filename}</p>
         </div>
-        <button onClick={onReset} className="text-sm text-gray-400 hover:text-white transition-colors">
+        <button
+          onClick={onReset}
+          style={{ fontSize: 13, color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+        >
           ← Upload new
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
         {messages.length === 0 && (
-          <p className="text-gray-500 text-center mt-12">Ask anything about your document</p>
+          <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, marginTop: 48 }}>
+            Ask anything about your document
+          </p>
         )}
+
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[75%] px-4 py-3 rounded-xl text-sm whitespace-pre-wrap
-              ${m.role === "user" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-100"}`}>
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div style={{
+              maxWidth: "75%",
+              padding: "10px 14px",
+              borderRadius: m.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
+              fontSize: 13,
+              lineHeight: 1.6,
+              whiteSpace: "pre-wrap",
+              background: m.role === "user" ? "var(--accent)" : "var(--bg-card)",
+              color: m.role === "user" ? "var(--accent-text)" : "var(--text-primary)",
+              border: m.role === "user" ? "none" : "0.5px solid var(--border)",
+            }}>
               {m.content}
-              {/* Show source badge for assistant messages */}
               {m.source && (
-                <div className="mt-2 flex gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.source === "web" ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"}`}>
+                <div style={{ marginTop: 6, display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{
+                    fontSize: 10, padding: "2px 8px", borderRadius: 20,
+                    background: m.source === "web" ? "#FDF0DC" : "#E1F0E6",
+                    color: m.source === "web" ? "#7A4A0A" : "#1C5C32",
+                  }}>
                     {m.source === "web" ? "🌐 Web" : "📄 Document"}
                   </span>
-                  <span className="text-xs text-gray-500">confidence: {m.confidence}</span>
+                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>confidence: {m.confidence}</span>
                 </div>
               )}
             </div>
           </div>
         ))}
+
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-800 px-4 py-3 rounded-xl text-sm text-gray-400">Thinking...</div>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div style={{
+              background: "var(--bg-card)", border: "0.5px solid var(--border)",
+              padding: "10px 14px", borderRadius: "14px 14px 14px 3px",
+              fontSize: 13, color: "var(--text-muted)"
+            }}>
+              Thinking...
+            </div>
           </div>
         )}
       </div>
 
       {/* Input */}
-      <div className="flex gap-3">
+      <div style={{ display: "flex", gap: 10 }}>
         <input
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-colors"
+          style={{
+            flex: 1, background: "var(--bg-card)", border: "0.5px solid var(--border)",
+            borderRadius: 12, padding: "14px 18px", fontSize: 14,
+            color: "var(--text-primary)", fontFamily: "inherit", outline: "none",
+          }}
           placeholder="Ask a question about your document..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -89,7 +116,11 @@ export default function Chat({ sessionId, filename, onReset }) {
         <button
           onClick={sendMessage}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-5 py-3 rounded-xl text-sm font-medium transition-colors"
+          style={{
+            background: "var(--accent)", color: "var(--accent-text)", border: "none",
+            borderRadius: 12, padding: "14px 22px", fontSize: 14,
+            cursor: "pointer", fontFamily: "inherit", opacity: loading ? 0.5 : 1,
+          }}
         >
           Send
         </button>
