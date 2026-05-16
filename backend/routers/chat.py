@@ -4,6 +4,7 @@ from backend.services.vectorstore import search_chunks
 from backend.services.confidence import score_confidence, should_use_web
 from backend.services.websearch import search_web
 from backend.services.llm import generate_answer
+from backend.services.sessions import add_message, set_name, get_session
 
 router = APIRouter()
 
@@ -27,6 +28,20 @@ def chat(request: ChatRequest):
         source = "web"
 
     result = generate_answer(chunks, request.query)
+
+    # Auto-name session from first question if it has no name yet
+    session = get_session(request.session_id)
+    if session and session.get("name") is None:
+        auto_name = request.query[:40] + ("..." if len(request.query) > 40 else "")
+        set_name(request.session_id, auto_name)
+
+    # Save user message and assistant reply to session history
+    add_message(request.session_id, "user", request.query)
+    add_message(request.session_id, "assistant", result["answer"], meta={
+        "confidence": round(confidence, 3),
+        "source": source,
+        "sources": result["sources"]
+    })
 
     return {
         "session_id": request.session_id,

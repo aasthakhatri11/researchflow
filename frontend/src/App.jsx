@@ -2,15 +2,28 @@ import { useState, useEffect } from "react"
 import Upload from "./components/Upload"
 import Chat from "./components/Chat"
 import Archie from "./components/Archie"
+import Sidebar from "./components/Sidebar"
 
 export default function App() {
   const [sessionId, setSessionId] = useState(null)
   const [filename, setFilename] = useState(null)
   const [dark, setDark] = useState(false)
+  const [sessions, setSessions] = useState([])
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
   }, [dark])
+
+  // Fetch all sessions from backend whenever we're in chat view
+  useEffect(() => {
+    if (sessionId) fetchSessions()
+  }, [sessionId])
+
+  async function fetchSessions() {
+    const res = await fetch("http://localhost:8000/api/sessions")
+    const data = await res.json()
+    setSessions(data)
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", position: "relative" }}>
@@ -36,14 +49,21 @@ export default function App() {
         </button>
       </div>
 
-      {/* Main content */}
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 24px 100px" }}>
-        {!sessionId ? (
+      {/* Body — sidebar + main */}
+      {!sessionId ? (
+        <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 24px 100px" }}>
           <Upload onUpload={(id, name) => { setSessionId(id); setFilename(name) }} />
-        ) : (
-          <Chat sessionId={sessionId} filename={filename} onReset={() => setSessionId(null)} />
-        )}
-      </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", height: "calc(100vh - 57px)" }}>
+          <Sidebar sessions={sessions} currentSessionId={sessionId} />
+          <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px 100px" }}>
+            <div style={{ maxWidth: 560, margin: "0 auto" }}>
+              <Chat sessionId={sessionId} filename={filename} onReset={() => setSessionId(null)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <Archie />
     </div>
