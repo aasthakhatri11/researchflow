@@ -2,6 +2,10 @@
 
 Hybrid Research Assistant with Citation-Aware RAG + Web Search
 
+pdf generation of the summary + chat
+
+more features to be integrated
+
 ResearchFlow is a full-stack AI research assistant that lets users upload research papers or documents and chat with them using natural language. The system provides answers with exact page citations and intelligently expands beyond the document when additional context is needed.
 
 Unlike traditional RAG systems that are restricted to uploaded files, ResearchFlow treats the document as the starting point — not the boundary. When the uploaded paper lacks enough context, the system automatically performs web search augmentation and clearly labels every source used in the final response.
