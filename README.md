@@ -88,7 +88,7 @@ This enables the assistant to:
 
 ### AI / ML
 
-* Gemini API
+* Groq API
 * HuggingFace Embeddings
 * ChromaDB Vector Store
 
@@ -146,7 +146,7 @@ FastAPI Backend
   ├── Embedding Generation (HuggingFace)
   ├── ChromaDB Vector Store
   ├── LangChain Retrieval Pipeline
-  ├── Gemini API Response Generation
+  ├── Groq API Response Generation
   ├── Tavily Web Search Integration
   ├── Multi-Paper Retrieval Manager
   ├── PostgreSQL Session Storage
@@ -184,7 +184,9 @@ If document confidence is low:
 
 ### 5. Final Response Generation
 
-Gemini API generates:
+Groq API generates:
+
+need changes in the prompt
 
 * citation-aware responses
 * source-separated reasoning
@@ -241,7 +243,7 @@ researchflow/
 Create a `.env` file in the backend directory:
 
 ```env
-GOOGLE_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
 TAVILY_API_KEY=your_tavily_key
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
@@ -385,7 +387,7 @@ The system should help users:
 ## Week 2 — RAG + Web Search
 
 * LangChain retrieval pipeline
-* Gemini API integration
+* Groq API integration
 * Confidence-based source routing
 * Tavily web search integration
 * Multi-paper retrieval support
