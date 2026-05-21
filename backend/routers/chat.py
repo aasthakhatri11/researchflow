@@ -27,15 +27,17 @@ def chat(request: ChatRequest):
         chunks = web_results
         source = "web"
 
-    result = generate_answer(chunks, request.query)
-
-    # Auto-name session from first question if it has no name yet
+    # Read history BEFORE generating so the LLM has full conversation context
     session = get_session(request.session_id)
+    history = session.get("messages", []) if session else []
+
+    result = generate_answer(chunks, request.query, history)
+
+    # Auto-name from first question
     if session and session.get("name") is None:
         auto_name = request.query[:40] + ("..." if len(request.query) > 40 else "")
         set_name(request.session_id, auto_name)
 
-    # Save user message and assistant reply to session history
     add_message(request.session_id, "user", request.query)
     add_message(request.session_id, "assistant", result["answer"], meta={
         "confidence": round(confidence, 3),

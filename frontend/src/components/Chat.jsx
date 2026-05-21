@@ -1,12 +1,31 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
-export default function Chat({ sessionId, filename, onReset }) {
+export default function Chat({ sessionId, filename, onReset, onFirstMessage }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
 
+  // Load chat history when session changes
+  useEffect(() => {
+    if (!sessionId) return
+    setMessages([])
+    fetch(`http://localhost:8000/api/sessions/${sessionId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.messages && data.messages.length > 0) {
+          setMessages(data.messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            source: m.meta?.source,
+            confidence: m.meta?.confidence,
+          })))
+        }
+      })
+  }, [sessionId])
+
   async function sendMessage() {
     if (!input.trim()) return
+    const isFirst = messages.length === 0
     const userMessage = { role: "user", content: input }
     setMessages(prev => [...prev, userMessage])
     setInput("")
@@ -21,10 +40,14 @@ export default function Chat({ sessionId, filename, onReset }) {
       const data = await res.json()
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: data.answer || `[Source: ${data.source} | Confidence: ${data.confidence}]\n\nChunks found: ${data.chunks_found}`,
+        content: data.answer,
         source: data.source,
         confidence: data.confidence,
       }])
+
+      // Tell sidebar to refresh after first message so auto-name appears
+      if (isFirst && onFirstMessage) onFirstMessage()
+
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong." }])
     } finally {
@@ -78,7 +101,7 @@ export default function Chat({ sessionId, filename, onReset }) {
                     background: m.source === "web" ? "#FDF0DC" : "#E1F0E6",
                     color: m.source === "web" ? "#7A4A0A" : "#1C5C32",
                   }}>
-                    {m.source === "web" ? "🌐 Web" : "📄 Document"}
+                    {m.source === "web" ? "Web" : "Document"}
                   </span>
                   <span style={{ fontSize: 10, color: "var(--text-muted)" }}>confidence: {m.confidence}</span>
                 </div>
@@ -101,7 +124,7 @@ export default function Chat({ sessionId, filename, onReset }) {
       </div>
 
       {/* Input */}
-      <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", gap: 10, paddingRight: 80 }}>
         <input
           style={{
             flex: 1, background: "var(--bg-card)", border: "0.5px solid var(--border)",

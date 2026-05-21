@@ -14,7 +14,6 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
   }, [dark])
 
-  // Fetch all sessions from backend whenever we're in chat view
   useEffect(() => {
     if (sessionId) fetchSessions()
   }, [sessionId])
@@ -23,6 +22,17 @@ export default function App() {
     const res = await fetch("http://localhost:8000/api/sessions")
     const data = await res.json()
     setSessions(data)
+  }
+
+  function handleSelectSession(session) {
+    setSessionId(session.session_id)
+    setFilename(session.filename)
+  }
+
+  function handleReset() {
+    setSessionId(null)
+    setFilename(null)
+    setSessions([])
   }
 
   return (
@@ -56,10 +66,20 @@ export default function App() {
         </div>
       ) : (
         <div style={{ display: "flex", height: "calc(100vh - 57px)" }}>
-          <Sidebar sessions={sessions} currentSessionId={sessionId} />
+          <Sidebar
+            sessions={sessions}
+            currentSessionId={sessionId}
+            onSelectSession={handleSelectSession}
+            onSessionsChange={fetchSessions}
+          />
           <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px 100px" }}>
             <div style={{ maxWidth: 560, margin: "0 auto" }}>
-              <Chat sessionId={sessionId} filename={filename} onReset={() => setSessionId(null)} />
+              <Chat
+                sessionId={sessionId}
+                filename={filename}
+                onReset={handleReset}
+                onFirstMessage={fetchSessions}
+              />
             </div>
           </div>
         </div>
