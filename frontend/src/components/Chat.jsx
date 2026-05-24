@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react"
+import { jsPDF } from "jspdf"
 
 export default function Chat({ sessionId, filename, onReset, onFirstMessage }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
-  // Load chat history when session changes
   useEffect(() => {
     if (!sessionId) return
     setMessages([])
@@ -44,14 +45,123 @@ export default function Chat({ sessionId, filename, onReset, onFirstMessage }) {
         source: data.source,
         confidence: data.confidence,
       }])
-
-      // Tell sidebar to refresh after first message so auto-name appears
       if (isFirst && onFirstMessage) onFirstMessage()
-
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong." }])
     } finally {
       setLoading(false)
+    }
+  }
+
+  console.log("Key:", import.meta.env.VITE_GROQ_API_KEY)
+  async function handleExport() {
+    if (messages.length === 0) return
+    setExporting(true)
+
+    try {
+      // Step 1 — ask Groq to generate a summary based on the conversation
+      const transcript = messages
+        .filter(m => m.role === "user" || m.role === "assistant")
+        .map(m => `${m.role === "user" ? "User" : "ResearchFlow"}: ${m.content}`)
+        .join("\n\n")
+
+      const summaryRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content: "You are a research assistant. Based on the conversation below, write a concise summary (5-8 sentences) of the key findings and topics discussed about the document. Be factual and clear."
+            },
+            {
+              role: "user",
+              content: transcript
+            }
+          ],
+          temperature: 0.2,
+        })
+      })
+
+      const summaryData = await summaryRes.json()
+      const summary = summaryData.choices[0].message.content
+
+      // Step 2 — build the PDF
+      const doc = new jsPDF({ unit: "pt", format: "a4" })
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 48
+      const contentWidth = pageWidth - margin * 2
+      let y = margin
+
+      function addText(text, fontSize, color, bold = false, extraGap = 0) {
+        doc.setFontSize(fontSize)
+        doc.setTextColor(...color)
+        doc.setFont("helvetica", bold ? "bold" : "normal")
+        const lines = doc.splitTextToSize(text, contentWidth)
+        lines.forEach(line => {
+          if (y + fontSize + 4 > pageHeight - margin) {
+            doc.addPage()
+            y = margin
+          }
+          doc.text(line, margin, y)
+          y += fontSize + 4
+        })
+        y += extraGap
+      }
+
+      function addDivider() {
+        if (y + 20 > pageHeight - margin) { doc.addPage(); y = margin }
+        doc.setDrawColor(200, 200, 200)
+        doc.line(margin, y, pageWidth - margin, y)
+        y += 16
+      }
+
+      // Title
+      addText("ResearchFlow — Export", 20, [28, 58, 47], true, 4)
+      addText(`Document: ${filename}`, 11, [120, 116, 104], false, 2)
+      addText(`Exported: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`, 11, [120, 116, 104], false, 16)
+
+      addDivider()
+
+      // Summary section
+      addText("Summary", 15, [28, 58, 47], true, 8)
+      addText(summary, 11, [40, 40, 40], false, 16)
+
+      addDivider()
+
+      // Transcript section
+      addText("Chat Transcript", 15, [28, 58, 47], true, 8)
+
+      messages.forEach(m => {
+        if (m.role === "user") {
+          addText("You", 10, [108, 111, 232], true, 2)
+          addText(m.content, 11, [40, 40, 40], false, 4)
+          if (m.source) {
+            addText(`Source: ${m.source} · Confidence: ${m.confidence}`, 9, [154, 148, 136], false, 0)
+          }
+        } else {
+          addText("ResearchFlow", 10, [28, 92, 50], true, 2)
+          addText(m.content, 11, [40, 40, 40], false, 4)
+          if (m.source) {
+            addText(`Source: ${m.source} · Confidence: ${m.confidence}`, 9, [154, 148, 136], false, 0)
+          }
+        }
+        y += 10
+      })
+
+      // Save
+      const safeName = filename.replace(/\.pdf$/i, "")
+      doc.save(`${safeName}_researchflow.pdf`)
+
+    } catch (err) {
+      console.error("Export failed:", err)
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -64,12 +174,28 @@ export default function Chat({ sessionId, filename, onReset, onFirstMessage }) {
           <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Chatting with</p>
           <p style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>{filename}</p>
         </div>
-        <button
-          onClick={onReset}
-          style={{ fontSize: 13, color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-        >
-          ← Upload new
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {messages.length > 0 && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              style={{
+                fontSize: 12, color: "var(--accent)", background: "none",
+                border: "0.5px solid var(--accent)", borderRadius: 7,
+                padding: "5px 12px", cursor: "pointer", fontFamily: "inherit",
+                opacity: exporting ? 0.5 : 1, transition: "opacity 0.15s ease"
+              }}
+            >
+              {exporting ? "Exporting..." : "Export PDF"}
+            </button>
+          )}
+          <button
+            onClick={onReset}
+            style={{ fontSize: 13, color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            ← Upload new
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
