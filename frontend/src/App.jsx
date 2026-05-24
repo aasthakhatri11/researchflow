@@ -9,19 +9,30 @@ export default function App() {
   const [filename, setFilename] = useState(null)
   const [dark, setDark] = useState(false)
   const [sessions, setSessions] = useState([])
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
   }, [dark])
 
+  // Fetch sessions on startup so sidebar is populated immediately
+  useEffect(() => {
+    fetchSessions()
+  }, [])
+
+  // Also refetch when session changes
   useEffect(() => {
     if (sessionId) fetchSessions()
   }, [sessionId])
 
   async function fetchSessions() {
-    const res = await fetch("http://localhost:8000/api/sessions")
-    const data = await res.json()
-    setSessions(data)
+    try {
+      const res = await fetch("http://localhost:8000/api/sessions")
+      const data = await res.json()
+      setSessions(data)
+    } catch {
+      // backend not running yet — fail silently
+    }
   }
 
   function handleSelectSession(session) {
@@ -32,13 +43,29 @@ export default function App() {
   function handleReset() {
     setSessionId(null)
     setFilename(null)
-    setSessions([])
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", position: "relative", display: "flex", flexDirection: "column" }}>
+
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 24px", borderBottom: "0.5px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 24px", borderBottom: "0.5px solid var(--border)", flexShrink: 0 }}>
+        {/* Sidebar toggle */}
+        <button
+          onClick={() => setSidebarOpen(o => !o)}
+          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            padding: "4px 6px", borderRadius: 6, marginRight: 2,
+            color: "var(--text-muted)", fontSize: 16, lineHeight: 1,
+            transition: "color 0.15s ease",
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
+          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+        >
+          {sidebarOpen ? "←" : "→"}
+        </button>
+
         <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="7" r="3" fill="var(--accent-text)" opacity="0.9"/>
@@ -59,20 +86,31 @@ export default function App() {
         </button>
       </div>
 
-      {/* Body — sidebar + main */}
-      {!sessionId ? (
-        <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 24px 100px" }}>
-          <Upload onUpload={(id, name) => { setSessionId(id); setFilename(name) }} />
-        </div>
-      ) : (
-        <div style={{ display: "flex", height: "calc(100vh - 57px)" }}>
+      {/* Body */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+        {/* Sidebar — always rendered, width animates */}
+        <div style={{
+          width: sidebarOpen ? 240 : 0,
+          overflow: "hidden",
+          transition: "width 0.25s ease",
+          flexShrink: 0,
+        }}>
           <Sidebar
             sessions={sessions}
             currentSessionId={sessionId}
             onSelectSession={handleSelectSession}
             onSessionsChange={fetchSessions}
           />
-          <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px 100px" }}>
+        </div>
+
+        {/* Main content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px 100px" }}>
+          {!sessionId ? (
+            <div style={{ maxWidth: 560, margin: "0 auto" }}>
+              <Upload onUpload={(id, name) => { setSessionId(id); setFilename(name); fetchSessions() }} />
+            </div>
+          ) : (
             <div style={{ maxWidth: 560, margin: "0 auto" }}>
               <Chat
                 sessionId={sessionId}
@@ -81,9 +119,9 @@ export default function App() {
                 onFirstMessage={fetchSessions}
               />
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       <Archie />
     </div>
