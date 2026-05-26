@@ -53,3 +53,25 @@ def chat(request: ChatRequest):
         "answer": result["answer"],
         "sources": result["sources"]
     }
+
+@router.post("/api/export-summary")
+async def export_summary(payload: dict):
+    transcript = payload.get("transcript", "")
+    from groq import Groq
+    import os
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a research assistant. Based on the conversation below, write a concise summary (5-8 sentences) of the key findings and topics discussed about the document. Be factual and clear."
+            },
+            {
+                "role": "user",
+                "content": transcript
+            }
+        ],
+        temperature=0.2,
+    )
+    return {"summary": response.choices[0].message.content}

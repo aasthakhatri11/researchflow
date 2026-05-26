@@ -53,7 +53,6 @@ export default function Chat({ sessionId, filename, onReset, onFirstMessage }) {
     }
   }
 
-  console.log("Key:", import.meta.env.VITE_GROQ_API_KEY)
   async function handleExport() {
     if (messages.length === 0) return
     setExporting(true)
@@ -65,30 +64,14 @@ export default function Chat({ sessionId, filename, onReset, onFirstMessage }) {
         .map(m => `${m.role === "user" ? "User" : "ResearchFlow"}: ${m.content}`)
         .join("\n\n")
 
-      const summaryRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const summaryRes = await fetch("http://localhost:8000/api/export-summary", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content: "You are a research assistant. Based on the conversation below, write a concise summary (5-8 sentences) of the key findings and topics discussed about the document. Be factual and clear."
-            },
-            {
-              role: "user",
-              content: transcript
-            }
-          ],
-          temperature: 0.2,
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript })
       })
 
       const summaryData = await summaryRes.json()
-      const summary = summaryData.choices[0].message.content
+      const summary = summaryData.summary
 
       // Step 2 — build the PDF
       const doc = new jsPDF({ unit: "pt", format: "a4" })
