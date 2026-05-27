@@ -2,7 +2,7 @@
 
 A full-stack AI research assistant built with FastAPI and React. Upload any research paper as a PDF, ask questions in plain English, and get answers cited by page number.
 
-ResearchFlow uses a confidence scoring system to decide — per query — whether the document has enough context to answer. If confidence is low, it automatically falls back to live web search via Tavily, and clearly labels every response with its source (document or web).
+ResearchFlow uses a confidence scoring system to decide per query whether the document has enough context to answer. If confidence is low, it automatically falls back to live web search via Tavily, and clearly labels every response with its source (document or web).
 
 ---
 
