@@ -27,6 +27,10 @@ ResearchFlow uses a confidence scoring system to decide per query whether the do
 - PDF export — AI-generated summary + full cited chat transcript
 - Dark / light mode, collapsible sidebar
 - Archie — a charcoal owl mascot that reacts to cursor proximity
+- Side by side PDF viewer with clickable citations
+- Beginner, Technical and Academic research modes
+- Follow-up suggestions after each answer
+- Contradiction detection across different papers
 
 ---
 
