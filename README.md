@@ -1,4 +1,4 @@
-# ResearchFlow
+<img width="1446" height="2588" alt="image" src="https://github.com/user-attachments/assets/fc21c326-7c31-4c89-86d8-6f127a736d8c" /># ResearchFlow
 
 A full-stack AI research assistant built with FastAPI and React. Upload any research paper as a PDF, ask questions in plain English, and get answers cited by page number.
 
@@ -25,6 +25,7 @@ ResearchFlow uses a confidence scoring system to decide per query whether the do
 - Ethics enforcement — refuses harmful or hateful requests
 - Session sidebar with auto-naming, rename, delete, and history persistence
 - PDF export — AI-generated summary + full cited chat transcript
+- Multi-paper comparision
 - Dark / light mode, collapsible sidebar
 - Archie — a charcoal owl mascot that reacts to cursor proximity
 - Side by side PDF viewer with clickable citations
