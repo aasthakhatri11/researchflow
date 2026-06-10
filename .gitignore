@@ -6,4 +6,5 @@ __pycache__/
 .DS_Store
 chroma_db/
 uploads/
-sessions.jsonnode_modules/
+sessions.json
+node_modules/
