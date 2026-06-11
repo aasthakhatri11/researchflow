@@ -6,6 +6,7 @@ import { ChatSidebar } from '@/components/chat-sidebar'
 import { PDFViewer } from '@/components/pdf-viewer'
 import { ChatInterface } from '@/components/chat-interface'
 import { OwlMascot } from '@/components/owl-mascot'
+import { UploadLanding } from '@/components/upload_landing'
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -37,6 +38,7 @@ interface Message {
 export default function ResearchFlowPage() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [showLanding, setShowLanding] = useState(true)
 
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
@@ -62,7 +64,6 @@ export default function ResearchFlowPage() {
     loadSessions()
   }, [])
 
-  // ── Load messages when active session changes ───────────────────────────────
   useEffect(() => {
     if (!activeSessionId) return
     loadSessionMessages(activeSessionId)
@@ -74,7 +75,6 @@ export default function ResearchFlowPage() {
     try {
       const res = await fetch(`${API}/api/sessions`)
       const data = await res.json()
-      // Backend returns array of session objects
       const mapped: ChatSession[] = (data || []).map((s: {
         session_id: string
         filename?: string
@@ -87,10 +87,6 @@ export default function ResearchFlowPage() {
         preview: s.messages?.[0]?.content?.slice(0, 60) || '',
       }))
       setSessions(mapped)
-      if (mapped.length > 0 && !activeSessionId) {
-        setActiveSessionId(mapped[0].id)
-        setPdfFileName(mapped[0].name)
-      }
     } catch (err) {
       console.error('Failed to load sessions:', err)
     }
@@ -111,10 +107,7 @@ export default function ResearchFlowPage() {
           role: m.role as 'user' | 'assistant',
           content: m.content,
           source: m.meta?.source
-            ? {
-                type: m.meta.source as 'document' | 'web',
-                page: m.meta.page,
-              }
+            ? { type: m.meta.source as 'document' | 'web', page: m.meta.page }
             : undefined,
           confidence: m.meta?.confidence,
         }))
@@ -148,11 +141,9 @@ export default function ResearchFlowPage() {
     fileInputRef.current?.click()
   }, [])
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || file.type !== 'application/pdf') return
-
+  const processUpload = useCallback(async (file: File) => {
     setIsUploading(true)
+    setShowLanding(false)
     setMessages([])
     setPdfFileName(file.name)
 
@@ -176,15 +167,21 @@ export default function ResearchFlowPage() {
         setSessions(prev => [newSession, ...prev])
         setActiveSessionId(data.session_id)
         setCurrentPage(1)
+        setIsSidebarOpen(true)
       }
     } catch (err) {
       console.error('Upload failed:', err)
+      setShowLanding(true)
     } finally {
       setIsUploading(false)
-      // Reset so the same file can be re-uploaded if needed
-      e.target.value = ''
     }
   }, [])
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type === 'application/pdf') await processUpload(file)
+    e.target.value = ''
+  }, [processUpload])
 
   // ── Send message ────────────────────────────────────────────────────────────
 
@@ -203,15 +200,11 @@ export default function ResearchFlowPage() {
       const res = await fetch(`${API}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: activeSessionId,
-          query: content,
-          mode,
-        }),
+        body: JSON.stringify({ session_id: activeSessionId, query: content, mode }),
       })
       const data = await res.json()
 
-      const assistantMessage: Message = {
+      setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.answer,
@@ -219,27 +212,18 @@ export default function ResearchFlowPage() {
           ? { type: data.source as 'document' | 'web', page: data.page }
           : undefined,
         confidence: data.confidence,
-      }
-      setMessages(prev => [...prev, assistantMessage])
+      }])
 
-      // Update session preview in sidebar
       setSessions(prev =>
-        prev.map(s =>
-          s.id === activeSessionId
-            ? { ...s, preview: content.slice(0, 60) }
-            : s
-        )
+        prev.map(s => s.id === activeSessionId ? { ...s, preview: content.slice(0, 60) } : s)
       )
     } catch (err) {
       console.error('Chat failed:', err)
-      setMessages(prev => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: 'Something went wrong. Please check your connection and try again.',
-        },
-      ])
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Something went wrong. Please check your connection and try again.',
+      }])
     } finally {
       setIsLoading(false)
     }
@@ -250,22 +234,23 @@ export default function ResearchFlowPage() {
   }, [handleSendMessage])
 
   const handleSourceClick = useCallback((source: { type: 'document' | 'web'; page?: number }) => {
-    if (source.type === 'document' && source.page) {
-      setCurrentPage(source.page)
-    }
+    if (source.type === 'document' && source.page) setCurrentPage(source.page)
   }, [])
 
   // ── Session management ──────────────────────────────────────────────────────
 
   const handleNewChat = useCallback(() => {
-    // New chat means uploading a new PDF — trigger file picker
-    handleUploadClick()
-  }, [handleUploadClick])
+    setShowLanding(true)
+    setMessages([])
+    setActiveSessionId(null)
+    setPdfFileName(null)
+  }, [])
 
   const handleSelectSession = useCallback((id: string) => {
     setActiveSessionId(id)
     const session = sessions.find(s => s.id === id)
     if (session) setPdfFileName(session.name)
+    setShowLanding(false)
   }, [sessions])
 
   const handleRenameSession = useCallback(async (id: string, name: string) => {
@@ -287,10 +272,10 @@ export default function ResearchFlowPage() {
       setSessions(prev => {
         const next = prev.filter(s => s.id !== id)
         if (activeSessionId === id) {
-          const nextSession = next[0] || null
-          setActiveSessionId(nextSession?.id || null)
-          setPdfFileName(nextSession?.name || null)
+          setActiveSessionId(null)
+          setPdfFileName(null)
           setMessages([])
+          setShowLanding(true)
         }
         return next
       })
@@ -299,11 +284,48 @@ export default function ResearchFlowPage() {
     }
   }, [activeSessionId])
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Uploading overlay ───────────────────────────────────────────────────────
+
+  const uploadingOverlay = isUploading && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-xl px-8 py-6 shadow-lg text-center">
+        <div className="flex gap-1 justify-center mb-3">
+          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+          <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+        </div>
+        <p className="text-sm font-medium">Processing your document…</p>
+        <p className="text-xs text-muted-foreground mt-1">Embedding chunks into ChromaDB</p>
+      </div>
+    </div>
+  )
+
+  // ── Landing screen ──────────────────────────────────────────────────────────
+
+  if (showLanding) {
+    return (
+      <>
+        {uploadingOverlay}
+        <UploadLanding
+          onFileSelect={processUpload}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+          onRenameSession={handleRenameSession}
+          onDeleteSession={handleDeleteSession}
+          isDarkMode={isDarkMode}
+          onToggleTheme={toggleTheme}
+        />
+      </>
+    )
+  }
+
+  // ── Chat layout ─────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Hidden file input */}
+      {uploadingOverlay}
+
       <input
         ref={fileInputRef}
         type="file"
@@ -312,29 +334,12 @@ export default function ResearchFlowPage() {
         className="hidden"
       />
 
-      {/* Uploading overlay */}
-      {isUploading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl px-8 py-6 shadow-lg text-center">
-            <div className="flex gap-1 justify-center mb-3">
-              <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-            </div>
-            <p className="text-sm font-medium">Processing your document…</p>
-            <p className="text-xs text-muted-foreground mt-1">Embedding chunks into ChromaDB</p>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
       <Header
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
         onUploadClick={handleUploadClick}
       />
 
-      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         <ChatSidebar
           isOpen={isSidebarOpen}
@@ -348,7 +353,6 @@ export default function ResearchFlowPage() {
         />
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
-          {/* Chat panel */}
           <ResizablePanel defaultSize={55} minSize={35}>
             <ChatInterface
               messages={messages}
@@ -363,7 +367,6 @@ export default function ResearchFlowPage() {
 
           <ResizableHandle withHandle className="bg-border hover:bg-primary/30 transition-colors" />
 
-          {/* PDF viewer panel */}
           <ResizablePanel defaultSize={isPdfCollapsed ? 5 : 45} minSize={isPdfCollapsed ? 5 : 30}>
             <PDFViewer
               fileName={pdfFileName}
